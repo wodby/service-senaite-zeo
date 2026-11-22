@@ -43,15 +43,18 @@ volumes:
 
 # A consistent copy of the database and the files, made while the server
 # runs. To restore, stop the server and unpack the archive into /data.
+# Wodby creates and uploads the archive in separate pods that share only the
+# data volume, so the archive is written there; the upload's cleanup removes
+# it.
 backups:
 - name: data
   title: SENAITE database and files
   create:
     args:
     - senaite-backup
-    - /tmp/wodby-backup/senaite.tar.gz
+    - /data/.wodby-backup/senaite.tar.gz
   upload:
-    filepath: /tmp/wodby-backup/senaite.tar.gz
+    filepath: /data/.wodby-backup/senaite.tar.gz
     extension: tar.gz
 
 deployment:
