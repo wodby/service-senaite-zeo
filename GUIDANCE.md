@@ -8,7 +8,7 @@ The database (`filestorage/Data.fs`) and the uploaded files (`blobstorage`) are 
 
 ## Backups
 
-The **SENAITE database and files** backup runs `senaite-backup` while the server runs: it copies the database up to its last committed transaction with Zope's `repozo` tool and adds the uploaded files, as one `.tar.gz` archive. The copy is made in the container's temporary space, so the node needs free disk space about the size of the database.
+The **SENAITE database and files** backup runs `senaite-backup` while the server runs: it copies the database up to its last committed transaction with Zope's `repozo` tool and adds the uploaded files, as one `.tar.gz` archive. The database copy is made in the container's temporary space and the archive is written to the `data` volume until it is uploaded, so both the node and the volume need free space about the size of the database.
 
 To restore a backup, stop the app, empty `/data`, unpack the archive into `/data` so it contains `filestorage` and `blobstorage`, and start the app again. Don't unpack it while the server runs.
 
