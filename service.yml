@@ -14,6 +14,7 @@ labels:
 options:
 - version: '2.6'
   tag: 2.6-r0
+  digest: sha256:8357c828c5a5e5c7a71b81e150f69d7822e47d70d94f29ec281c859804f21459
   default: true
 
 # Only SENAITE clients in the app connect.
