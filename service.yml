@@ -1,0 +1,164 @@
+name: senaite-zeo
+type: service
+icon: senaite
+title: SENAITE database (ZEO)
+guidance: GUIDANCE.md
+# One ZEO server owns the database file and the uploaded files on its volume.
+scalable: false
+
+labels:
+- senaite-zeo
+
+# The same image as the SENAITE service: the database server must run the
+# same ZODB release as its clients.
+options:
+- version: '2.6'
+  tag: 2.6-r0
+  default: true
+
+# Only SENAITE clients in the app connect.
+endpoints:
+- name: zeo
+  ports:
+  - name: zeo
+    number: 8100
+    protocol: tcp
+    main: true
+    private: true
+
+volumes:
+- name: data
+  title: SENAITE database and files
+  size: 10
+  helm:
+    labels: persistence.labels
+    values:
+    - name: persistence.enabled
+      value: true
+    - name: persistence.size
+      value: '{{volumes.data.size}}Gi'
+    - name: persistence.storageClass
+      value: '{{volumes.data.storageClassName}}'
+
+# A consistent copy of the database and the files, made while the server
+# runs. To restore, stop the server and unpack the archive into /data.
+backups:
+- name: data
+  title: SENAITE database and files
+  create:
+    args:
+    - senaite-backup
+    - /tmp/wodby-backup/senaite.tar.gz
+  upload:
+    filepath: /tmp/wodby-backup/senaite.tar.gz
+    extension: tar.gz
+
+deployment:
+  strategy: rolling
+  # The server finishes its transactions and closes the database file.
+  shutdownGracePeriod: 60s
+
+helm:
+  name: wodby
+  source: oci://registry-1.docker.io/wodby/stateful
+  chart: oci://registry-1.docker.io/wodby/stateful
+  version: 0.4.0
+  valueMappings:
+    replicas: replicaCount
+    serviceAccountName: serviceAccount.name
+    serviceAccountCreate: serviceAccount.create
+  values:
+  - name: containerName
+    value: zeo
+  - name: containerPorts
+    value:
+    - name: zeo
+      containerPort: 8100
+      protocol: TCP
+  - name: args
+    value:
+    - zeo
+  - name: serviceAccount.automount
+    value: false
+  - name: podSecurityContext
+    value:
+      fsGroup: 1000
+      fsGroupChangePolicy: OnRootMismatch
+  - name: securityContext
+    value:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      readOnlyRootFilesystem: true
+      runAsGroup: 1000
+      runAsNonRoot: true
+      runAsUser: 1000
+  # The PID file and backups in progress.
+  - name: extraVolumes
+    value:
+    - name: cache
+      emptyDir:
+        sizeLimit: 64Mi
+    - name: tmp
+      emptyDir: {}
+  - name: extraVolumeMounts
+    value:
+    - name: cache
+      mountPath: /var/cache/senaite
+    - name: tmp
+      mountPath: /tmp
+  - name: persistence.mountPath
+    value: /data
+  - name: terminationGracePeriodSeconds
+    value: 60
+  # Opening a large database file rebuilds its index first.
+  - name: startupProbe
+    value:
+      tcpSocket:
+        port: zeo
+      failureThreshold: 60
+      periodSeconds: 5
+  - name: readinessProbe
+    value:
+      tcpSocket:
+        port: zeo
+      periodSeconds: 10
+  - name: livenessProbe
+    value:
+      tcpSocket:
+        port: zeo
+      failureThreshold: 6
+      periodSeconds: 20
+
+workloads:
+- name: main
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: '{{helm.release}}'
+  kind: statefulset
+  primary: true
+  helm:
+    labels: commonLabels
+    annotations: commonAnnotations
+    volumes: extraVolumes
+  containers:
+  - name: zeo
+    image: wodby/senaite
+    resources:
+      request:
+        cpu: 20
+        memory: 96
+      limit:
+        memory: 1024
+    helm:
+      resources: resources
+      env: envVars
+      mounts: extraVolumeMounts
+      image:
+        repository: image.repository
+        tag: image.tag
+        registry: image.registry
+        pullPolicy: image.pullPolicy
+
+workspace: false
