@@ -13,8 +13,8 @@ labels:
 # same ZODB release as its clients.
 options:
 - version: '2.6'
-  tag: 2.6-r0
-  digest: sha256:8357c828c5a5e5c7a71b81e150f69d7822e47d70d94f29ec281c859804f21459
+  tag: 2.6-r1
+  digest: sha256:76b0b2b432cfc0cefa8167b74e1f28e7556b7da617dffd578ed1d48e62f12fe0
   default: true
 
 # Only SENAITE clients in the app connect.
